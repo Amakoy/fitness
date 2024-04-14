@@ -124,7 +124,7 @@ class _MyAppState extends State<MyApp> {
   List<num> _rssConvert(List<num> rss) {
     var nice = <num>[];
     for (int i = 0; i < rss.length; i++) {
-      nice.add(pow(e, (rss[i] + 36.95778978) / -8.0070515));
+      nice.add(pow(e, (rss[i] + 36.03007262) / -9.73267397));
     }
     return nice;
   }
@@ -149,7 +149,7 @@ class _MyAppState extends State<MyApp> {
       final results = await WiFiScan.instance.getScannedResults();
       setState(() => accessPoints = results);
       List<num> values = _getRSSValues();
-      print(values);
+      // print(values);
       values = _rssConvert(values);
       // print(values);
 
@@ -217,12 +217,12 @@ class _MyAppState extends State<MyApp> {
 
     int counter = 0;
     int limit = 22;
-    print("first counterr $counter");
+    // print("first counterr $counter");
 
     await Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 2));
+      await Future.delayed(const Duration(seconds: 1, milliseconds: 50));
       if (counter == limit) {
-        print("limitttt");
+        // print("limitttt");
         return false;
       }
 
@@ -258,25 +258,18 @@ class _MyAppState extends State<MyApp> {
           }));
 
       counter++;
-      print("continueee");
+      // print("continueee");
       return true;
     });
     _nextColumn();
   }
 
   Future<void> _testLoop(BuildContext context) async {
-    int counter = 0;
-    await Future.doWhile(
-      () async {
-        await Future.delayed(const Duration(seconds: 1));
-        await _startScan(context);
-        await _getScannedResults(context);
-        print(1);
-        counter++;
-        if (counter == 5) return false;
-        return true;
-      },
-    );
+    List<int> test = [1, 2, 3];
+    for (int i = 0; i < 3; i++) {
+      print("$i ==========");
+      print(test[i]);
+    }
   }
 
   // Future<void> _startListeningToScanResults(BuildContext context) async {
@@ -297,33 +290,31 @@ class _MyAppState extends State<MyApp> {
       throw ErrorDescription("WiFi List Empty!");
     }
     List<String> apBssid = [
-      //Change this
-      'f8:75:88:c4:c5:a4', //Sibayak
-      '82:8f:c8:09:86:80', //Note 11
-      'b6:15:e6:39:b6:59' //SMA IT
+      "f8:75:88:c4:c5:a4", //Sibayak
+      "82:8f:c8:09:86:80", //Note 11
+      "66:48:4d:10:ae:d5", //Redmi Note 11
+      // 'test'
     ];
+    print(apBssid.length);
     var mantapp = <WiFiAccessPoint>[];
     var rssValue = <int>[];
-    print(apBssid[2]);
-    print(apBssid.length);
+    // print(apBssid[2]);
+    // print(apBssid.length);
 
     for (int i = 0; i < apBssid.length; i++) {
+      // print("$i ======== mantapp");
+      // print(apBssid[i]);
       mantapp.add(
           accessPoints.firstWhere((element) => element.bssid == apBssid[2]));
     }
+
     for (int i = 0; i < apBssid.length; i++) {
       // print(mantapp[i].level);
       rssValue.add(mantapp[i].level);
+      // print(rssValue);
     }
     return rssValue;
   }
-
-  // @override
-  // void dispose() {
-  //   super.dispose();
-  //   // stop subscription for scanned results
-  //   _stopListeningToScanResults();
-  // }
 
   // build toggle with label
   Widget _buildToggle({
@@ -379,6 +370,10 @@ class _MyAppState extends State<MyApp> {
                       icon: const Icon(Icons.save),
                     ),
                   ],
+                ),
+                IconButton(
+                  onPressed: () => _getRSSValues(),
+                  icon: const Icon(Icons.texture_sharp),
                 ),
                 const Divider(),
                 Column(
