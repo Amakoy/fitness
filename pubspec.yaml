@@ -41,6 +41,8 @@ dependencies:
   path_provider: ^2.1.2
   excel: ^4.0.3
   permission_handler: ^11.3.1
+  gestures: ^1.0.0
+  equations: ^5.0.2
 
 dev_dependencies:
   flutter_test:
