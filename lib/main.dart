@@ -4,16 +4,17 @@ import 'dart:math';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 
+import 'package:wifi_scan/wifi_scan.dart';
 import 'package:matrix_utils/matrix_utils.dart' as mrx hide MatrixFunctions;
 import 'package:excel/excel.dart' hide Border;
 import 'package:permission_handler/permission_handler.dart';
 
-import 'package:wifi_scan/wifi_scan.dart';
+import './graphics.dart';
+// import './testt.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const MaterialApp(title: 'Trilaterasi', home: MyApp()));
 }
 
 /// Example app for wifi_scan plugin.
@@ -29,6 +30,9 @@ class _MyAppState extends State<MyApp> {
   List<WiFiAccessPoint> accessPoints = <WiFiAccessPoint>[];
   List<WiFiAccessPoint> secureAPs = <WiFiAccessPoint>[];
   List<WifiLocation> filteredAPs = <WifiLocation>[];
+  mrx.Matrix targett = mrx.Matrix.fromList([
+    [0, 0, 0]
+  ]);
   StreamSubscription<List<WiFiAccessPoint>>? subscription;
   bool shouldCheckCan = true;
   bool collectConstants = false;
@@ -132,7 +136,7 @@ class _MyAppState extends State<MyApp> {
   ];
 
   var excel = Excel.createExcel();
-  var excelData = Excel.createExcel();
+  // var excelData = Excel.createExcel();
 
   void _excelCreate(BuildContext context) async {
     try {
@@ -211,30 +215,21 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  //TEEEEESSTTTTTTTTT
-
   Future<mrx.Matrix> trilateration(
       mrx.Matrix locations, List<List<num>> radii) async {
     try {
       mrx.Matrix A = locations.scale(2);
       A.appendColumns(mrx.Column.fill(locations.length, 2));
 
-      // print(A);
       mrx.Matrix b = locations.pow(2).row(0).column(0) +
           locations.pow(2).row(0).column(1) -
           mrx.Matrix([radii[0]]).pow(2);
-      // print(b);
-
-      print(locations);
 
       for (int i = 1; i < locations.length; i++) {
-        print("======");
         b = b.appendRows(locations.row(i).column(0).pow(2) +
             locations.row(i).column(1).pow(2) -
             mrx.Matrix([radii[i]]).pow(2));
-        print(b);
       }
-      // print("TEST");
       mrx.Matrix ata = A.transpose() * A; //A^T * A
       mrx.SVD svd = mrx.SVD(ata); //Finding SV
       mrx.Matrix u = A * svd.V() * svd.S().pow(0.5).inverse(); //Finding U
@@ -250,18 +245,14 @@ class _MyAppState extends State<MyApp> {
 
   //TEEESSSTTTT EEEENNNNDDDDDD
 
-  List<num> rssConvert(List<num> rss) {
-    var nice = <num>[];
-    for (int i = 0; i < rss.length; i++) {
-      nice.add(pow(e, (rss[i] + 36.5) / -13.63755));
+  num rssConvertOne(int? rss, int constant) {
+    num result = 0;
+    if (constant == 1) {
+      result = pow(e, (rss! + 1.58308485) / -30.11054505);
+    } else if (constant == 2) {
+      result = pow(e, (rss! + 43.95844362) / -13.09117999);
     }
-    // print(nice); //For Testing
-    return nice;
-  }
-
-  num rssConvertOne(int? rss) {
-    // print(nice); //For Testing
-    return pow(e, (rss! + 1.58308485) / -30.11054505);
+    return result;
   }
 
   Future<void> _getScannedResults(BuildContext context) async {
@@ -281,7 +272,6 @@ class _MyAppState extends State<MyApp> {
                   (accessPoints[i].ssid == "Griya Firdaus I NEW") |
                   (accessPoints[i].ssid == "AndroidWifi")) &
               savedAPs.contains(accessPoints[i].bssid) &
-              // (accessPoints[i].bssid == '2c:73:a0:0f:26:ae') &  ini Lisdas
               (accessPoints[i].standard == WiFiStandards.ac)) {
             //Add AP points to filtered list
             cacheSecureAP.add(accessPoints[i]);
@@ -289,181 +279,38 @@ class _MyAppState extends State<MyApp> {
                 (element) => element.bssid == accessPoints[i].bssid,
                 orElse: () => WifiLocation(
                     bssid: '-1', location: mrx.Vector.fromList([-1]))));
+
             //RSSI and Conversion
             cacheLocationAP[cacheLocationAP.length - 1].rssi =
                 accessPoints[i].level;
             cacheLocationAP[cacheLocationAP.length - 1].distance =
-                rssConvertOne(cacheLocationAP[cacheLocationAP.length - 1].rssi);
+                rssConvertOne(
+                    cacheLocationAP[cacheLocationAP.length - 1].rssi, 1);
+            cacheLocationAP[cacheLocationAP.length - 1].distance2 =
+                rssConvertOne(
+                    cacheLocationAP[cacheLocationAP.length - 1].rssi, 2);
           }
         }
         setState(() => secureAPs = cacheSecureAP);
         setState(() => filteredAPs = cacheLocationAP);
         if (filteredAPs.length < 3) {
-          print("not enough AP!");
+          print("Not enough AP!");
           throw const FormatException("not enough AP's scanned!");
         }
-
-        // print(cacheLocationAP[cacheLocationAP.length - 1].location);
-        // print(cacheLocationAP[cacheLocationAP.length - 1].rssi);
-        // print(filteredAPs[filteredAPs.length - 1].location);
       } on Exception catch (e) {
         print(e);
         throw Exception(e);
       }
-      // List<mrx.Vector> target =
-      //     _countTrila(p1, p2, p3, values[0], values[1], values[2]);
     } else {
       throw Exception();
     }
   }
 
-  void _nextColumn() {
-    setState(() => docColumn += filteredAPs.length + 3);
-  }
-
-  void _prevColumn() {
-    setState(() => docColumn -= 6);
-  }
-
-  // Convert Data Section
-
-  Future<void> _convertData(BuildContext context) async {
-    // ini nanti aja
-    var sheetObject = excel['Data'];
-    var dataObject = excelData['Data'];
-
-    var column = docColumn + 1;
-    var row = 1;
-
-    // print("test");
-
-    sheetObject
-            .cell(CellIndex.indexByColumnRow(columnIndex: docColumn, rowIndex: row))
-            .value =
-        dataObject
-            .cell(CellIndex.indexByColumnRow(
-                columnIndex: docColumn, rowIndex: row))
-            .value;
-    sheetObject
-            .cell(CellIndex.indexByColumnRow(
-                columnIndex: docColumn, rowIndex: row + 1))
-            .value =
-        dataObject
-            .cell(CellIndex.indexByColumnRow(
-                columnIndex: docColumn, rowIndex: row + 1))
-            .value;
-    sheetObject
-        .cell(CellIndex.indexByColumnRow(
-            columnIndex: docColumn + 1, rowIndex: row - 1))
-        .value = const TextCellValue("x");
-    sheetObject
-        .cell(CellIndex.indexByColumnRow(
-            columnIndex: docColumn + 2, rowIndex: row - 1))
-        .value = const TextCellValue("y");
-
-    List<mrx.Vector> target = [
-      mrx.Vector.fromList([0, 0])
-    ];
-    List<List<mrx.Vector>> recent = [];
-
-    int counter = 0;
-    int limit = 32;
-    // print("first counterr $counter");
-
-    await Future.doWhile(() async {
-      await Future.delayed(const Duration(milliseconds: 50));
-      if (counter == limit) {
-        // print("limitttt");
-        return false;
-      }
-
-      setState(() => message = (counter + 1).toString());
-
-      convertComponent(column, row).then((value) {
-        target = value;
-        print(target);
-        sheetObject
-            .cell(CellIndex.indexByColumnRow(
-                columnIndex: column, rowIndex: row)) //IMPORTANT
-            .value = DoubleCellValue(target[0][0].toDouble()); //IMPORTANT
-        sheetObject //IMPORTANT
-            .cell(CellIndex.indexByColumnRow(
-                columnIndex: column + 1, rowIndex: row))
-            .value = DoubleCellValue(target[0][1].toDouble());
-        // sheetObject
-        //     .cell(CellIndex.indexByColumnRow(
-        //         columnIndex: column + 4, rowIndex: row))
-        //     .value = TextCellValue(_getRSSValues()[0].toString());
-        // sheetObject
-        //     .cell(CellIndex.indexByColumnRow(
-        //         columnIndex: column + 5, rowIndex: row))
-        //     .value = TextCellValue(_getRSSValues()[1].toString());
-        // sheetObject
-        //     .cell(CellIndex.indexByColumnRow(
-        //         columnIndex: column + 6, rowIndex: row))
-        //     .value = TextCellValue(_getRSSValues()[2].toString());
-        row++;
-        // print(sheetObject
-        //     .cell(CellIndex.indexByColumnRow(
-        //         columnIndex: column + 6, rowIndex: row))
-        //     .value);
-        // recent.add(target);
-        // recents = recent.reversed.toList().getRange(0, 1).toString();
-      }).catchError((e) {
-        print(e);
-        row++;
-      });
-      counter++;
-      // print("continueee");
-      return true;
-    });
-    // print(target);
-    setState(() => lastCol = column + 6);
-    _nextColumn();
-  }
-
-  Future<List<mrx.Vector>> convertComponent(int column, int row) async {
-    // ini nanti aja
-    try {
-      var sheetObject = excelData['Data'];
-      List<num> values = [0, 0, 0];
-      List<mrx.Vector> target = [
-        mrx.Vector.fromList([0, 0, 0])
-      ];
-
-      values[0] = num.parse(sheetObject
-          .cell(CellIndex.indexByColumnRow(
-              columnIndex: column + 4, rowIndex: row))
-          .value
-          .toString());
-      values[1] = num.parse(sheetObject
-          .cell(CellIndex.indexByColumnRow(
-              columnIndex: column + 5, rowIndex: row))
-          .value
-          .toString());
-      values[2] = num.parse(sheetObject
-          .cell(CellIndex.indexByColumnRow(
-              columnIndex: column + 6, rowIndex: row))
-          .value
-          .toString());
-
-      rssConvert(values);
-
-      // target = await _countTrila(p1, p2, p3, values[0], values[1], values[2]);
-
-      return target;
-    } on Exception catch (e) {
-      throw Exception(e);
-    }
-  }
-
-  // Convert Data End
-
   Future<void> _trilaterationSequence(BuildContext context) async {
     excel.rename('Sheet1', 'Data');
     var sheetObject = excel['Data'];
 
-    var column = docColumn + 1;
+    var column = 1;
 
     // Writing real coordinates and labels
 
@@ -482,19 +329,59 @@ class _MyAppState extends State<MyApp> {
         .cell(CellIndex.indexByColumnRow(
             columnIndex: docColumn + 2, rowIndex: row - 1))
         .value = const TextCellValue("y");
+    // sheetObject
+    //     .cell(CellIndex.indexByColumnRow(
+    //         columnIndex: docColumn + 2, rowIndex: row - 1))
+    //     .value = const TextCellValue("Konstanta 1");
+    int etcStart = 16;
+    sheetObject
+        .cell(CellIndex.indexByColumnRow(
+            columnIndex: etcStart + 1, rowIndex: row - 1))
+        .value = const TextCellValue("Konstanta 1 > -90 RSS");
+    sheetObject
+        .cell(CellIndex.indexByColumnRow(
+            columnIndex: etcStart + 1, rowIndex: row))
+        .value = const TextCellValue("x");
+    sheetObject
+        .cell(CellIndex.indexByColumnRow(
+            columnIndex: etcStart + 2, rowIndex: row))
+        .value = const TextCellValue("y");
+    sheetObject
+        .cell(CellIndex.indexByColumnRow(
+            columnIndex: etcStart + 5, rowIndex: row - 1))
+        .value = const TextCellValue("Konstanta 2 Semua");
+    sheetObject
+        .cell(CellIndex.indexByColumnRow(
+            columnIndex: etcStart + 5, rowIndex: row))
+        .value = const TextCellValue("x");
+    sheetObject
+        .cell(CellIndex.indexByColumnRow(
+            columnIndex: etcStart + 6, rowIndex: row))
+        .value = const TextCellValue("y");
+    sheetObject
+        .cell(CellIndex.indexByColumnRow(
+            columnIndex: etcStart + 9, rowIndex: row - 1))
+        .value = const TextCellValue("Konstanta 2 > -90 RSS");
+    sheetObject
+        .cell(CellIndex.indexByColumnRow(
+            columnIndex: etcStart + 9, rowIndex: row))
+        .value = const TextCellValue("x");
+    sheetObject
+        .cell(CellIndex.indexByColumnRow(
+            columnIndex: etcStart + 10, rowIndex: row))
+        .value = const TextCellValue("y");
 
     mrx.Matrix target = mrx.Matrix.fromList([
       [0, 0, 0]
     ]);
-    List<int> lengths = [];
 
     int counter = 0;
     int limit = 32;
 
-    //Looping to get data every 1.5 seconds
+    //Looping to get data every 2 seconds
 
     await Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 1, milliseconds: 50));
+      await Future.delayed(const Duration(seconds: 2));
       if (counter == limit) {
         return false;
       }
@@ -503,32 +390,55 @@ class _MyAppState extends State<MyApp> {
 
       _startScan(context)
           .then((value) => _getScannedResults(context).then((value) {
-                //Mulai dari 0 di luar loop dulu biar dideclare
                 if (filteredAPs.length < 3) {
                   throw Exception();
                 }
+                column = 1;
                 mrx.Matrix points =
                     mrx.Matrix.fromList([filteredAPs[0].location.toList()]);
 
+                //Mulai dari 0 di luar loop dulu biar dideclare
                 List<List<num>> radii = [
                   [filteredAPs[0].distance!]
+                ];
+
+                List<List<num>> radii2 = [
+                  [filteredAPs[0].distance2!]
                 ];
 
                 List<List<num>> rss = [
                   [filteredAPs[0].rssi!]
                 ];
 
+                List<int> removes = <int>[];
+
+                // filteredAPs.last.rssi = -92; //Testing
+
                 for (int i = 1; i < filteredAPs.length; i++) {
                   points = points.appendRows(
                       mrx.Matrix.fromList([filteredAPs[i].location.toList()]));
                   radii.add([filteredAPs[i].distance!]);
+                  radii2.add([filteredAPs[i].distance2!]);
                   rss.add([filteredAPs[i].rssi!]);
                 }
 
+                for (int i = 0; i < filteredAPs.length; i++) {
+                  // print("Checking");
+                  if (filteredAPs[i].rssi! <= -90) {
+                    // print(filteredAPs[i].rssi.toString() + "Found");
+                    removes.add(i);
+                  }
+                }
+
+                //Konstanta 1 dan semua AP
                 trilateration(points, radii).then((value) {
                   target = value;
-                  print(target[0]);
-                  lengths.add(filteredAPs.length);
+                  print(target);
+                  // print(target[0][0]);
+                  setState(() {
+                    targett = target;
+                  });
+                  // print(targett);
 
                   sheetObject
                       .cell(CellIndex.indexByColumnRow(
@@ -548,13 +458,14 @@ class _MyAppState extends State<MyApp> {
                               rowIndex: row))
                           .value = TextCellValue(" ${filteredAPs[i].bssid}");
                       sheetObject
-                          .cell(CellIndex.indexByColumnRow(
-                              columnIndex: column + 3 + columning,
-                              rowIndex: row))
-                          .value = TextCellValue(" ${filteredAPs[i].rssi}");
+                              .cell(CellIndex.indexByColumnRow(
+                                  columnIndex: column + 3 + columning,
+                                  rowIndex: row))
+                              .value =
+                          DoubleCellValue(filteredAPs[i].rssi!.toDouble());
                       columning += 2;
                     } else {
-                      if (filteredAPs[i].bssid == '24:36:da:9c:f4:ee') {
+                      if (filteredAPs[i].bssid == '84:f1:47:8b:91:8e') {
                         sheetObject
                             .cell(CellIndex.indexByColumnRow(
                                 columnIndex: column + 2, rowIndex: row))
@@ -563,30 +474,69 @@ class _MyAppState extends State<MyApp> {
                             .cell(CellIndex.indexByColumnRow(
                                 columnIndex: column + 3, rowIndex: row))
                             .value = TextCellValue(" ${filteredAPs[i].rssi}");
-                        columning += 2;
                       }
                     }
-                    // TextCellValue(
-                    //     "${filteredAPs[i].bssid} || ${filteredAPs[i].rssi}");
                   }
-
-                  // recent.appendRows(target);
                   recents =
                       "${target[0][0].toString()} ${target[1][0].toString()}";
-
-                  // setState(() => lastCol = column + 4);
                 }).then((value) {
-                  row++;
-                }).catchError((e) {
-                  print(e);
+                  //Konstanta 1 dan AP < 90 RSS
+                  if (removes.isNotEmpty) {
+                    var below90 = radii.take(removes[0]).toList();
+                    trilateration(points.removeRows(removes), below90)
+                        .then((value) {
+                      target = value;
 
-                  sheetObject
-                      .cell(CellIndex.indexByColumnRow(
-                          columnIndex: column, rowIndex: row))
-                      .value = TextCellValue('${e} not found');
-                  row++;
+                      sheetObject
+                          .cell(CellIndex.indexByColumnRow(
+                              columnIndex: etcStart + 1, rowIndex: row + 1))
+                          .value = TextCellValue(target[0][0].toString());
+                      sheetObject
+                          .cell(CellIndex.indexByColumnRow(
+                              columnIndex: etcStart + 2, rowIndex: row + 1))
+                          .value = TextCellValue(target[1][0].toString());
+                    }).then((value) {
+                      trilateration(points, radii2).then((value) {
+                        target = value;
+                        sheetObject
+                            .cell(CellIndex.indexByColumnRow(
+                                columnIndex: etcStart + 5, rowIndex: row))
+                            .value = TextCellValue(target[0][0].toString());
+                        sheetObject
+                            .cell(CellIndex.indexByColumnRow(
+                                columnIndex: etcStart + 6, rowIndex: row))
+                            .value = TextCellValue(target[1][0].toString());
+                      });
+                    }).then((value) {
+                      trilateration(points.removeRows(removes),
+                              radii2.take(removes[0]).toList())
+                          .then((value) {
+                        target = value;
+
+                        sheetObject
+                            .cell(CellIndex.indexByColumnRow(
+                                columnIndex: etcStart + 9, rowIndex: row))
+                            .value = TextCellValue(target[0][0].toString());
+                        sheetObject
+                            .cell(CellIndex.indexByColumnRow(
+                                columnIndex: etcStart + 10, rowIndex: row))
+                            .value = TextCellValue(target[1][0].toString());
+                      });
+                    }).then((value) {
+                      row++;
+                    });
+                  }
                 });
-              }));
+              }))
+          .catchError((e) {
+        print(e);
+
+        sheetObject
+            .cell(
+                CellIndex.indexByColumnRow(columnIndex: column, rowIndex: row))
+            .value = TextCellValue('${e} not found');
+        row++;
+      });
 
       counter++;
 
@@ -690,6 +640,10 @@ class _MyAppState extends State<MyApp> {
                 activeColor: Colors.purple)
           ],
         ),
+        // floatingActionButton: FloatingActionButton(
+        //     child: const Icon(Icons.location_on),
+        //     onPressed: () => Navigator.push(context,
+        //         MaterialPageRoute(builder: (context) => const Graphics()))),
         body: Builder(
           builder: (context) => Padding(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
@@ -769,23 +723,18 @@ class _MyAppState extends State<MyApp> {
                   ],
                 ),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // TextButton(
-                    //     onPressed: _prevColumn, child: const Text("Prev")),
-                    Row(
-                      // crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text("Row: $row  ||   ${row ~/ 32}-th Data"),
-                      ],
-                    ),
-                    // TextButton(
-                    //     onPressed: _nextColumn, child: const Text("Next")),
+                    Text("Row: $row  ||   ${row ~/ 32}-th Data"),
                   ],
                 ),
                 Text(message),
                 Text(recents),
+                Center(
+                    child: HouseBlueprint(
+                  apLocationList: filteredAPs,
+                  target: targett,
+                )),
                 Flexible(
                   child: Center(
                     child: accessPoints.isEmpty
@@ -911,7 +860,12 @@ class WifiLocation {
   mrx.Vector location;
   late int? rssi;
   late num? distance;
+  late num? distance2;
 
   WifiLocation(
-      {required this.bssid, required this.location, this.rssi, this.distance});
+      {required this.bssid,
+      required this.location,
+      this.rssi,
+      this.distance,
+      this.distance2});
 }

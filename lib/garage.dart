@@ -100,3 +100,158 @@
 
 //     return [k1, k2];
 //   }
+
+// Data Section
+
+//   Future<void> _convertData(BuildContext context) async {
+//     // ini nanti aja
+//     var sheetObject = excel['Data'];
+//     var dataObject = excelData['Data'];
+
+//     var column = docColumn + 1;
+//     var row = 1;
+
+//     // print("test");
+
+//     sheetObject
+//             .cell(CellIndex.indexByColumnRow(columnIndex: docColumn, rowIndex: row))
+//             .value =
+//         dataObject
+//             .cell(CellIndex.indexByColumnRow(
+//                 columnIndex: docColumn, rowIndex: row))
+//             .value;
+//     sheetObject
+//             .cell(CellIndex.indexByColumnRow(
+//                 columnIndex: docColumn, rowIndex: row + 1))
+//             .value =
+//         dataObject
+//             .cell(CellIndex.indexByColumnRow(
+//                 columnIndex: docColumn, rowIndex: row + 1))
+//             .value;
+//     sheetObject
+//         .cell(CellIndex.indexByColumnRow(
+//             columnIndex: docColumn + 1, rowIndex: row - 1))
+//         .value = const TextCellValue("x");
+//     sheetObject
+//         .cell(CellIndex.indexByColumnRow(
+//             columnIndex: docColumn + 2, rowIndex: row - 1))
+//         .value = const TextCellValue("y");
+
+//     List<mrx.Vector> target = [
+//       mrx.Vector.fromList([0, 0])
+//     ];
+//     List<List<mrx.Vector>> recent = [];
+
+//     int counter = 0;
+//     int limit = 32;
+//     // print("first counterr $counter");
+
+//     await Future.doWhile(() async {
+//       await Future.delayed(const Duration(milliseconds: 50));
+//       if (counter == limit) {
+//         // print("limitttt");
+//         return false;
+//       }
+
+//       setState(() => message = (counter + 1).toString());
+
+//       convertComponent(column, row).then((value) {
+//         target = value;
+//         print(target);
+//         sheetObject
+//             .cell(CellIndex.indexByColumnRow(
+//                 columnIndex: column, rowIndex: row)) //IMPORTANT
+//             .value = DoubleCellValue(target[0][0].toDouble()); //IMPORTANT
+//         sheetObject //IMPORTANT
+//             .cell(CellIndex.indexByColumnRow(
+//                 columnIndex: column + 1, rowIndex: row))
+//             .value = DoubleCellValue(target[0][1].toDouble());
+//         // sheetObject
+//         //     .cell(CellIndex.indexByColumnRow(
+//         //         columnIndex: column + 4, rowIndex: row))
+//         //     .value = TextCellValue(_getRSSValues()[0].toString());
+//         // sheetObject
+//         //     .cell(CellIndex.indexByColumnRow(
+//         //         columnIndex: column + 5, rowIndex: row))
+//         //     .value = TextCellValue(_getRSSValues()[1].toString());
+//         // sheetObject
+//         //     .cell(CellIndex.indexByColumnRow(
+//         //         columnIndex: column + 6, rowIndex: row))
+//         //     .value = TextCellValue(_getRSSValues()[2].toString());
+//         row++;
+//         // print(sheetObject
+//         //     .cell(CellIndex.indexByColumnRow(
+//         //         columnIndex: column + 6, rowIndex: row))
+//         //     .value);
+//         // recent.add(target);
+//         // recents = recent.reversed.toList().getRange(0, 1).toString();
+//       }).catchError((e) {
+//         print(e);
+//         row++;
+//       });
+//       counter++;
+//       // print("continueee");
+//       return true;
+//     });
+//     // print(target);
+//     setState(() => lastCol = column + 6);
+//     _nextColumn();
+//   }
+
+//   Future<List<mrx.Vector>> convertComponent(int column, int row) async {
+//     // ini nanti aja
+//     try {
+//       var sheetObject = excelData['Data'];
+//       List<num> values = [0, 0, 0];
+//       List<mrx.Vector> target = [
+//         mrx.Vector.fromList([0, 0, 0])
+//       ];
+
+//       values[0] = num.parse(sheetObject
+//           .cell(CellIndex.indexByColumnRow(
+//               columnIndex: column + 4, rowIndex: row))
+//           .value
+//           .toString());
+//       values[1] = num.parse(sheetObject
+//           .cell(CellIndex.indexByColumnRow(
+//               columnIndex: column + 5, rowIndex: row))
+//           .value
+//           .toString());
+//       values[2] = num.parse(sheetObject
+//           .cell(CellIndex.indexByColumnRow(
+//               columnIndex: column + 6, rowIndex: row))
+//           .value
+//           .toString());
+
+//       rssConvert(values);
+
+//       // target = await _countTrila(p1, p2, p3, values[0], values[1], values[2]);
+
+//       return target;
+//     } on Exception catch (e) {
+//       throw Exception(e);
+//     }
+//   }
+
+  // Convert Data End
+
+
+
+  // void _nextColumn() {
+  //   setState(() => docColumn += filteredAPs.length + 3);
+  // }
+
+  // void _prevColumn() {
+  //   setState(() => docColumn -= 6);
+  // }
+
+  
+  // List<num> rssConvert(List<num> rss) {
+  //   var nice = <num>[];
+
+  //   for (int i = 0; i < rss.length; i++) {
+  //     nice.add(pow(e, (rss[i] + 36.5) / -13.63755));
+  //   }
+
+  //   return nice;
+  // }
