@@ -7,14 +7,18 @@ import './main.dart';
 class HouseBlueprint extends StatelessWidget {
   List<WifiLocation> apLocationList;
   mrx.Matrix target;
+  mrx.Matrix target2;
   HouseBlueprint(
-      {super.key, required this.apLocationList, required this.target});
+      {super.key,
+      required this.apLocationList,
+      required this.target,
+      required this.target2});
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
       size: const Size(294, 254.5), // Specify the size of the canvas
-      painter: BlueprintPainter(apLocationList, target),
+      painter: BlueprintPainter(apLocationList, target, target2),
     );
   }
 }
@@ -22,7 +26,8 @@ class HouseBlueprint extends StatelessWidget {
 class BlueprintPainter extends CustomPainter {
   List<WifiLocation> apLocationList;
   mrx.Matrix target;
-  BlueprintPainter(this.apLocationList, this.target);
+  mrx.Matrix target2;
+  BlueprintPainter(this.apLocationList, this.target, this.target2);
 
   List<List<double>> points = [
     [13, 13.1],
@@ -56,7 +61,6 @@ class BlueprintPainter extends CustomPainter {
       ..color = Colors.white
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
-
     final paint2 = Paint()
       ..color = Colors.green
       ..style = PaintingStyle.fill;
@@ -64,8 +68,8 @@ class BlueprintPainter extends CustomPainter {
       ..color = Colors.blue
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
-    final paintTarget = Paint()
-      ..color = Colors.orange
+    final paintPartition = Paint()
+      ..color = Colors.purple
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
 
@@ -81,6 +85,8 @@ class BlueprintPainter extends CustomPainter {
     canvas.drawRect(const Rect.fromLTWH(0, 290 - 95.5, 41, 60), paint);
     canvas.drawRect(const Rect.fromLTWH(41, 290 - 95.5, 36, 60), paint);
     canvas.drawRect(const Rect.fromLTWH(77, 290 - 95.5, 70, 60), paint);
+    canvas.drawLine(
+        const Offset(112, 210), const Offset(112, 254.5), paintPartition);
     canvas.drawRect(const Rect.fromLTWH(147, 290 - 95.5, 37, 60), paint);
     canvas.drawRect(const Rect.fromLTWH(184, 290 - 95.5, 69, 60), paint);
 
@@ -120,11 +126,13 @@ class BlueprintPainter extends CustomPainter {
     //Utara atas
     canvas.drawLine(const Offset(111.5, 66), const Offset(294, 66), paint);
     canvas.drawLine(const Offset(112, 66), const Offset(112, 0), paint);
-    // canvas.drawLine(
-    //     const Offset(149.5, 66), const Offset(149.5, 0), paint2);
-    // canvas.drawLine(const Offset(171, 66), const Offset(171, 0), paint2);
+    canvas.drawLine(
+        const Offset(149.5, 58), const Offset(149.5, 0), paintPartition);
+    canvas.drawLine(
+        const Offset(171, 66), const Offset(171, 0), paintPartition);
     canvas.drawLine(const Offset(189.5, 66), const Offset(189.5, 0), paint);
-    // canvas.drawLine(const Offset(207, 66), const Offset(207, 0), paint2);
+    canvas.drawLine(
+        const Offset(207, 66), const Offset(207, 0), paintPartition);
     canvas.drawLine(const Offset(253.5, 66), const Offset(253.5, 0), paint);
     canvas.drawLine(const Offset(274.5, 66), const Offset(274.5, 0), paint);
 
@@ -160,8 +168,15 @@ class BlueprintPainter extends CustomPainter {
       canvas.drawCircle(
           Offset(
               (target[0][0] * 10 / 2) + 1, (254.5 - (target[1][0] * 10 / 2))),
-          2,
+          2.6,
           paint2..color = Colors.orange);
+
+      // print(target2.toList());
+      canvas.drawCircle(
+          Offset(
+              (target2[0][0] * 10 / 2) + 1, (254.5 - (target2[1][0] * 10 / 2))),
+          2,
+          paint2..color = Colors.deepPurple);
     }
   }
 

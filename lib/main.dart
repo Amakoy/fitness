@@ -33,9 +33,13 @@ class _MyAppState extends State<MyApp> {
   mrx.Matrix targett = mrx.Matrix.fromList([
     [0, 0, 0]
   ]);
+  mrx.Matrix targett2 = mrx.Matrix.fromList([
+    [0, 0, 0]
+  ]);
   StreamSubscription<List<WiFiAccessPoint>>? subscription;
   bool shouldCheckCan = true;
   bool collectConstants = false;
+  bool scan = false;
   bool get isStreaming => subscription != null;
 
   String message = 'Press create, enter real coordinates, Get Data, then Save';
@@ -73,7 +77,7 @@ class _MyAppState extends State<MyApp> {
   List<WifiLocation> apLocationList = [
     WifiLocation(
         bssid: '24:36:da:9c:f9:8e',
-        location: mrx.Vector.fromList([13, 13.1])), // Lorong selatan barat  1
+        location: mrx.Vector.fromList([13.2, 13.1])), // Lorong selatan barat  1
     WifiLocation(
         bssid: '2c:73:a0:0f:28:2e',
         location: mrx.Vector.fromList([16.5, 17.7])), // S210                  2
@@ -219,7 +223,7 @@ class _MyAppState extends State<MyApp> {
       mrx.Matrix locations, List<List<num>> radii) async {
     try {
       mrx.Matrix A = locations.scale(2);
-      A.appendColumns(mrx.Column.fill(locations.length, 2));
+      A.appendColumns(mrx.Column.fill(locations.length, -1));
 
       mrx.Matrix b = locations.pow(2).row(0).column(0) +
           locations.pow(2).row(0).column(1) -
@@ -333,7 +337,7 @@ class _MyAppState extends State<MyApp> {
     //     .cell(CellIndex.indexByColumnRow(
     //         columnIndex: docColumn + 2, rowIndex: row - 1))
     //     .value = const TextCellValue("Konstanta 1");
-    int etcStart = 16;
+    int etcStart = 40;
     sheetObject
         .cell(CellIndex.indexByColumnRow(
             columnIndex: etcStart + 1, rowIndex: row - 1))
@@ -376,7 +380,7 @@ class _MyAppState extends State<MyApp> {
     ]);
 
     int counter = 0;
-    int limit = 32;
+    int limit = 35;
 
     //Looping to get data every 2 seconds
 
@@ -410,8 +414,6 @@ class _MyAppState extends State<MyApp> {
                   [filteredAPs[0].rssi!]
                 ];
 
-                List<int> removes = <int>[];
-
                 // filteredAPs.last.rssi = -92; //Testing
 
                 for (int i = 1; i < filteredAPs.length; i++) {
@@ -422,10 +424,10 @@ class _MyAppState extends State<MyApp> {
                   rss.add([filteredAPs[i].rssi!]);
                 }
 
+                List<int> removes =
+                    <int>[]; //Removing <= 90 RSS rows for testing
                 for (int i = 0; i < filteredAPs.length; i++) {
-                  // print("Checking");
                   if (filteredAPs[i].rssi! <= -90) {
-                    // print(filteredAPs[i].rssi.toString() + "Found");
                     removes.add(i);
                   }
                 }
@@ -480,7 +482,23 @@ class _MyAppState extends State<MyApp> {
                   recents =
                       "${target[0][0].toString()} ${target[1][0].toString()}";
                 }).then((value) {
-                  //Konstanta 1 dan AP < 90 RSS
+                  // Konstanta 2 semua AP
+                  trilateration(points, radii2).then((value) {
+                    target = value;
+                    setState(() {
+                      targett2 = target;
+                    });
+                    sheetObject
+                        .cell(CellIndex.indexByColumnRow(
+                            columnIndex: etcStart + 5, rowIndex: row))
+                        .value = TextCellValue(target[0][0].toString());
+                    sheetObject
+                        .cell(CellIndex.indexByColumnRow(
+                            columnIndex: etcStart + 6, rowIndex: row))
+                        .value = TextCellValue(target[1][0].toString());
+                  });
+                }).then((value) {
+                  //Konstanta 1 dan AP > -90 RSS
                   if (removes.isNotEmpty) {
                     var below90 = radii.take(removes[0]).toList();
                     trilateration(points.removeRows(removes), below90)
@@ -496,18 +514,7 @@ class _MyAppState extends State<MyApp> {
                               columnIndex: etcStart + 2, rowIndex: row + 1))
                           .value = TextCellValue(target[1][0].toString());
                     }).then((value) {
-                      trilateration(points, radii2).then((value) {
-                        target = value;
-                        sheetObject
-                            .cell(CellIndex.indexByColumnRow(
-                                columnIndex: etcStart + 5, rowIndex: row))
-                            .value = TextCellValue(target[0][0].toString());
-                        sheetObject
-                            .cell(CellIndex.indexByColumnRow(
-                                columnIndex: etcStart + 6, rowIndex: row))
-                            .value = TextCellValue(target[1][0].toString());
-                      });
-                    }).then((value) {
+                      // Konstanta dua > -90 RSS
                       trilateration(points.removeRows(removes),
                               radii2.take(removes[0]).toList())
                           .then((value) {
@@ -522,13 +529,15 @@ class _MyAppState extends State<MyApp> {
                                 columnIndex: etcStart + 10, rowIndex: row))
                             .value = TextCellValue(target[1][0].toString());
                       });
-                    }).then((value) {
-                      row++;
                     });
                   }
                 });
               }))
-          .catchError((e) {
+          .then((value) {
+        setState(() {
+          row += 1;
+        });
+      }).catchError((e) {
         print(e);
 
         sheetObject
@@ -548,38 +557,63 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _justScan(BuildContext context) async {
-    _startScan(context)
-        .then((value) => _getScannedResults(context))
-        .catchError((e) => print(e))
-        .then((value) {
-      if (filteredAPs.length < 3) {
-        throw Exception();
+    setState(() {
+      scan = true;
+    });
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 2));
+      if (scan) {
+        _startScan(context)
+            .then((value) => _getScannedResults(context))
+            .catchError((e) => print(e))
+            .then((value) {
+          if (filteredAPs.length < 3) {
+            throw Exception();
+          }
+          mrx.Matrix points =
+              mrx.Matrix.fromList([filteredAPs[0].location.toList()]);
+
+          List<List<num>> radii = [
+            [filteredAPs[0].distance!]
+          ];
+
+          List<List<num>> radii2 = [
+            [filteredAPs[0].distance!]
+          ];
+
+          List<List<num>> rss = [
+            [filteredAPs[0].rssi!]
+          ];
+
+          for (int i = 1; i < filteredAPs.length; i++) {
+            points = points.appendRows(
+                mrx.Matrix.fromList([filteredAPs[i].location.toList()]));
+            // print("${mrx.Matrix.fromList([
+            //       filteredAPs[i].location.toList()
+            //     ])} MANTAPPP");
+            // print(points);
+            radii.add([filteredAPs[i].distance!]);
+            radii2.add([filteredAPs[i].distance2!]);
+            rss.add([filteredAPs[i].rssi!]);
+          }
+
+          trilateration(points, radii).then((value) {
+            print(value[0][0]);
+            setState(() {
+              targett = value;
+            });
+          }).then((value) {
+            trilateration(points, radii2).then((value) {
+              setState(() {
+                targett2 = value;
+              });
+            });
+          }).catchError((e) => print(e));
+        });
+        return true;
       }
-      mrx.Matrix points =
-          mrx.Matrix.fromList([filteredAPs[0].location.toList()]);
 
-      List<List<num>> radii = [
-        [filteredAPs[0].distance!]
-      ];
-
-      List<List<num>> rss = [
-        [filteredAPs[0].rssi!]
-      ];
-
-      for (int i = 1; i < filteredAPs.length; i++) {
-        points = points.appendRows(
-            mrx.Matrix.fromList([filteredAPs[i].location.toList()]));
-        // print("${mrx.Matrix.fromList([
-        //       filteredAPs[i].location.toList()
-        //     ])} MANTAPPP");
-        // print(points);
-        radii.add([filteredAPs[i].distance!]);
-        rss.add([filteredAPs[i].rssi!]);
-      }
-
-      trilateration(points, radii)
-          .then((value) => print(value[0][0]))
-          .catchError((e) => print(e));
+      return false;
     });
   }
 
@@ -655,9 +689,15 @@ class _MyAppState extends State<MyApp> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     ElevatedButton.icon(
-                        onPressed: () async => _excelCreate(context),
-                        icon: const Icon(Icons.edit_document),
-                        label: const Text('Make Excel')),
+                        onPressed: () async => scan
+                            ? setState(() {
+                                scan = false;
+                              })
+                            : _justScan(context),
+                        icon: const Icon(Icons.location_on_sharp),
+                        label: scan
+                            ? const Text('Stop Scan')
+                            : const Text('Start Scan')),
                     ElevatedButton.icon(
                       icon: const Icon(
                         Icons.gps_fixed_sharp,
@@ -671,70 +711,72 @@ class _MyAppState extends State<MyApp> {
                     ),
                   ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => print('a'),
-                        icon:
-                            const Icon(Icons.precision_manufacturing_outlined),
-                      ),
-                      IconButton(
-                          onPressed: () async => _justScan(context),
-                          icon: const Icon(Icons.wifi)),
-                      Expanded(
-                        child: TextField(
-                          decoration: const InputDecoration(
-                              border: OutlineInputBorder(),
-                              hintText: "Filter by BSSID",
-                              contentPadding: EdgeInsets.fromLTRB(8, 3, 8, 3)),
-                          onSubmitted: (value) => _bssidTest(context, value),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                // Padding(
+                //   padding: const EdgeInsets.all(8.0),
+                //   child: Row(
+                //     children: [
+                //       IconButton(
+                //         onPressed: () => print('a'),
+                //         icon:
+                //             const Icon(Icons.precision_manufacturing_outlined),
+                //       ),
+                //       IconButton(
+                //           onPressed: () async => _justScan(context),
+                //           icon: const Icon(Icons.wifi)),
+                //       Expanded(
+                //         child: TextField(
+                //           decoration: const InputDecoration(
+                //               border: OutlineInputBorder(),
+                //               hintText: "Filter by BSSID",
+                //               contentPadding: EdgeInsets.fromLTRB(8, 3, 8, 3)),
+                //           onSubmitted: (value) => _bssidTest(context, value),
+                //         ),
+                //       ),
+                //     ],
+                //   ),
+                // ),
                 const Divider(),
-                Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: TextField(
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          hintText: "Berapa x?",
-                          contentPadding: EdgeInsets.all(5),
-                        ),
-                        onSubmitted: (text) => _changeReal(context, 0, text),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: TextField(
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          hintText: "Berapa y?",
-                          contentPadding: EdgeInsets.all(5),
-                        ),
-                        onSubmitted: (text) => _changeReal(context, 1, text),
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text("Row: $row  ||   ${row ~/ 32}-th Data"),
-                  ],
-                ),
-                Text(message),
-                Text(recents),
+                // Column(
+                //   children: [
+                //     Padding(
+                //       padding: const EdgeInsets.all(8.0),
+                //       child: TextField(
+                //         decoration: const InputDecoration(
+                //           border: OutlineInputBorder(),
+                //           hintText: "Berapa x?",
+                //           contentPadding: EdgeInsets.all(5),
+                //         ),
+                //         onSubmitted: (text) => _changeReal(context, 0, text),
+                //       ),
+                //     ),
+                //     Padding(
+                //       padding: const EdgeInsets.all(8.0),
+                //       child: TextField(
+                //         decoration: const InputDecoration(
+                //           border: OutlineInputBorder(),
+                //           hintText: "Berapa y?",
+                //           contentPadding: EdgeInsets.all(5),
+                //         ),
+                //         onSubmitted: (text) => _changeReal(context, 1, text),
+                //       ),
+                //     ),
+                //   ],
+                // ),
+                // Row(
+                //   mainAxisAlignment: MainAxisAlignment.center,
+                //   children: [
+                //     Text("Row: $row  ||   ${row ~/ 36}-th Data"),
+                //   ],
+                // ),
+                // Text(message),
+                Center(child: Text(recents)),
                 Center(
                     child: HouseBlueprint(
                   apLocationList: filteredAPs,
                   target: targett,
+                  target2: targett2,
                 )),
+                const Padding(padding: EdgeInsets.only(bottom: 8)),
                 Flexible(
                   child: Center(
                     child: accessPoints.isEmpty
@@ -809,9 +851,9 @@ class _AccessPointTile extends StatelessWidget {
         ? Icons.signal_wifi_4_bar
         : Icons.signal_wifi_0_bar;
     return ListTile(
-      tileColor: savedAPs.contains(accessPoint.bssid)
-          ? Colors.greenAccent
-          : Colors.amber,
+      // tileColor: savedAPs.contains(accessPoint.bssid)
+      //     ? Colors.greenAccent
+      //     : Colors.amber,
       visualDensity: VisualDensity.compact,
       leading: Icon(signalIcon),
       title: Text(title),
